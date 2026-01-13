@@ -306,3 +306,18 @@
 - Contact info validated with optional email, phone, and location
 - Uses Prisma.NullableJsonNullValueInput.DbNull for nullable JSON fields
 - Build and lint passing successfully
+
+### Task 2: Bio/pricing/contact editors - DONE
+- Created SettingsForm component at src/components/settings/settings-form.tsx
+- Form has three sections: Teacher Profile (name, bio, photo URL), Pricing, Contact Information
+- Teacher Profile section with name, bio textarea, and photo URL fields
+- Pricing section with dynamic field array - add/remove pricing options (name, price, description)
+- Contact Information section with email, phone, and location fields
+- Uses react-hook-form with zodResolver for form management
+- Zod validation matching API schema requirements
+- Fetches existing settings on mount and pre-fills form
+- Submits to PUT /api/settings endpoint
+- Loading states for fetching and submitting
+- Toast notifications for success/error feedback
+- Created teacher settings page at src/app/dashboard/teacher/settings/page.tsx
+- Build and lint passing successfully
