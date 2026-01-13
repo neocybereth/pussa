@@ -152,3 +152,16 @@
 - Toast notifications on success/error using sonner
 - Loading states and disabled inputs during submission
 - Build and lint passing successfully
+
+### Task 5: Exercise list view - DONE
+- Created ExerciseList component at src/components/exercises/exercise-list.tsx
+- Table view with columns: title, audio player, assigned count, created date, actions
+- Compact audio player in each row for quick playback
+- Edit and delete action buttons per exercise
+- Delete confirmation dialog with loading state
+- Empty state with link to create first exercise
+- Mobile-responsive: hides audio/date columns on smaller screens
+- Created teacher exercises page at src/app/dashboard/teacher/exercises/page.tsx
+- Created new exercise page at src/app/dashboard/teacher/exercises/new/page.tsx
+- Created edit exercise page at src/app/dashboard/teacher/exercises/[id]/edit/page.tsx
+- Build and lint passing successfully
