@@ -78,7 +78,7 @@ export async function POST(
     const validation = assignExercisesSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid data", details: validation.error.errors },
+        { error: "Invalid data", details: validation.error.issues },
         { status: 400 }
       );
     }
