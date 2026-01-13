@@ -179,3 +179,15 @@
 - Build and lint passing successfully
 
 ## Phase 4: Exercise Management - COMPLETED
+
+## Phase 5: Student Management - IN PROGRESS
+
+### Task 1: Students API routes - DONE
+- Created GET /api/students/[id] - Fetch single student with assigned exercises and recent classes
+- Created PUT /api/students/[id] - Update student name/email with Zod validation and duplicate email check
+- Created DELETE /api/students/[id] - Delete student with cascade to related records
+- Created GET /api/students/[id]/exercises - Get exercises assigned to a specific student
+- Created POST /api/students/[id]/exercises - Bulk assign/unassign exercises to student in transaction
+- All routes include proper auth checks (teacher only for mutations)
+- Students can view their own exercises via GET /api/students/[id]/exercises
+- Build and lint passing successfully
