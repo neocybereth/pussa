@@ -139,3 +139,16 @@
 - Added slider UI component from shadcn/ui
 - Added HTMLAudioElement to ESLint browser globals
 - Build and lint passing successfully
+
+### Task 4: Exercise form (create/edit) - DONE
+- Created ExerciseForm component at src/components/exercises/exercise-form.tsx
+- Added shadcn/ui Textarea component for description field
+- Supports both create and edit modes via mode prop
+- Form fields: title (required), description (optional), audio upload (required)
+- Integrated AudioUploader component for file upload handling
+- Zod validation: title max 200 chars, description max 2000 chars
+- Uses react-hook-form with zodResolver for form management
+- Cancel button navigates back, submit redirects to exercises list
+- Toast notifications on success/error using sonner
+- Loading states and disabled inputs during submission
+- Build and lint passing successfully
