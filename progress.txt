@@ -280,3 +280,29 @@
 - Toast notifications on success/error
 - Redirects to calendar after successful submission
 - Build and lint passing successfully
+
+### Task 5: Payment status toggle - DONE
+- Payment status toggle already implemented in TeacherCalendar component
+- Uses PATCH /api/classes/[id] endpoint to toggle between PAID and UNPAID
+- Updates local state and shows toast notification on success/error
+- Toggle button shows "Mark as Paid" or "Mark as Unpaid" depending on current status
+
+### Task 6: Teacher master calendar + student personal calendar - DONE
+- Teacher master calendar shows ALL students' classes at /dashboard/teacher/calendar
+- Student personal calendar shows only their OWN classes at /dashboard/student/calendar
+- Both calendars have payment status legend (green for Paid, amber for Unpaid)
+- Event click opens dialog with class details
+
+## Phase 6: Calendar & Scheduling - COMPLETED
+
+## Phase 7: Site Settings - IN PROGRESS
+
+### Task 1: Settings API routes - DONE
+- Created GET /api/settings - Fetch site settings (public endpoint)
+- Created PUT /api/settings - Update site settings with Zod validation (teacher only)
+- Auto-creates default settings record if none exists
+- Supports teacherName, teacherBio, teacherPhoto, pricing (JSON array), contactInfo (JSON object)
+- Pricing items validated with name, price, and optional description
+- Contact info validated with optional email, phone, and location
+- Uses Prisma.NullableJsonNullValueInput.DbNull for nullable JSON fields
+- Build and lint passing successfully
