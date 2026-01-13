@@ -362,3 +362,12 @@
 - Mobile-responsive grid layouts
 - Uses parallel data fetching with Promise.all for performance
 - Build and lint passing successfully
+
+### Task 3: Loading states and skeletons - DONE
+- Created loading.tsx for teacher calendar page with skeleton for header, legend, and calendar grid
+- Created loading.tsx for student calendar page with skeleton for header, legend, and calendar grid
+- Created loading.tsx for teacher settings page with skeleton for profile, pricing, and contact sections
+- Fixed pre-existing React import missing in skeleton.tsx component
+- All dashboard pages now have loading states: student (main, exercises, calendar), teacher (main, exercises, students, calendar, settings)
+- Loading skeletons match the structure of actual pages for smooth transitions
+- Build and lint passing successfully
