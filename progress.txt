@@ -252,3 +252,15 @@
 - Verifies student exists before scheduling class
 - All routes include proper auth checks and role-based access control
 - Build and lint passing successfully
+
+### Task 3: Calendar view component - DONE
+- Created TeacherCalendar component at src/components/calendar/teacher-calendar.tsx
+- Created StudentCalendar component at src/components/calendar/student-calendar.tsx
+- Created teacher calendar page at /dashboard/teacher/calendar with "Schedule Class" button
+- Created student calendar page at /dashboard/student/calendar for viewing scheduled classes
+- Event click opens dialog showing class details (student, times, payment status, notes)
+- Teacher can toggle payment status (PAID/UNPAID) directly from event dialog
+- Teacher can delete classes from event dialog with confirmation
+- Date selection navigates to schedule form with pre-filled dates
+- Payment status legend showing green (Paid) and amber (Unpaid) indicators
+- Build and lint passing successfully
