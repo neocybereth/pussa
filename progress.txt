@@ -240,3 +240,15 @@
 - Mobile-responsive toolbar layout with stacked buttons on small screens
 - Uses useSyncExternalStore for proper SSR hydration handling
 - Build and lint passing successfully
+
+### Task 2: Class scheduling API routes - DONE
+- Created GET /api/classes - List scheduled classes with date range and student filters
+- Created POST /api/classes - Create new class with Zod validation (teacher only)
+- Created GET /api/classes/[id] - Get single class (students see only their own)
+- Created PUT /api/classes/[id] - Update class details with partial validation (teacher only)
+- Created DELETE /api/classes/[id] - Delete scheduled class (teacher only)
+- Created PATCH /api/classes/[id] - Toggle payment status (PAID/UNPAID) (teacher only)
+- Validates end time is after start time
+- Verifies student exists before scheduling class
+- All routes include proper auth checks and role-based access control
+- Build and lint passing successfully
