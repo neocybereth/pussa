@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { StudentDetailClient } from "@/components/students/student-detail-client";
 
 interface StudentDetailPageProps {
@@ -16,53 +16,82 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
 
   const { id } = await params;
 
-  const student = await prisma.user.findUnique({
-    where: { id, role: "STUDENT" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-      assignedExercises: {
-        select: {
-          id: true,
-          assignedAt: true,
-          notes: true,
-          exercise: {
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              audioUrl: true,
-            },
-          },
-        },
-        orderBy: { assignedAt: "desc" },
-      },
-      scheduledClasses: {
-        select: {
-          id: true,
-          title: true,
-          startTime: true,
-          endTime: true,
-          paymentStatus: true,
-          notes: true,
-        },
-        orderBy: { startTime: "desc" },
-        take: 10,
-      },
-      _count: {
-        select: {
-          assignedExercises: true,
-          scheduledClasses: true,
-        },
-      },
-    },
-  });
+  // Get student
+  const { data: student, error: studentError } = await supabase
+    .from("users")
+    .select("id, name, email, created_at")
+    .eq("id", id)
+    .eq("role", "STUDENT")
+    .single();
 
-  if (!student) {
+  if (studentError || !student) {
     notFound();
   }
 
-  return <StudentDetailClient student={student} />;
+  // Get assigned exercises
+  const { data: assignedExercises } = await supabase
+    .from("student_exercises")
+    .select(`
+      id,
+      assigned_at,
+      notes,
+      exercise:exercises(id, title, description, audio_url)
+    `)
+    .eq("student_id", id)
+    .order("assigned_at", { ascending: false });
+
+  // Get scheduled classes (last 10)
+  const { data: scheduledClasses } = await supabase
+    .from("scheduled_classes")
+    .select("id, title, start_time, end_time, payment_status, notes")
+    .eq("student_id", id)
+    .order("start_time", { ascending: false })
+    .limit(10);
+
+  // Get counts
+  const [exercisesCount, classesCount] = await Promise.all([
+    supabase
+      .from("student_exercises")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", id),
+    supabase
+      .from("scheduled_classes")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", id),
+  ]);
+
+  // Build student object with camelCase keys for frontend
+  const studentData = {
+    id: student.id,
+    name: student.name,
+    email: student.email,
+    createdAt: student.created_at,
+    assignedExercises: (assignedExercises || []).map((ae) => ({
+      id: ae.id,
+      assignedAt: ae.assigned_at,
+      notes: ae.notes,
+      exercise: ae.exercise
+        ? {
+            id: ae.exercise.id,
+            title: ae.exercise.title,
+            description: ae.exercise.description,
+            audioUrl: ae.exercise.audio_url,
+          }
+        : null,
+    })),
+    scheduledClasses: (scheduledClasses || []).map((sc) => ({
+      id: sc.id,
+      title: sc.title,
+      startTime: sc.start_time,
+      endTime: sc.end_time,
+      paymentStatus: sc.payment_status,
+      notes: sc.notes,
+    })),
+    _count: {
+      assignedExercises: exercisesCount.count || 0,
+      scheduledClasses: classesCount.count || 0,
+    },
+  };
+
+  return <StudentDetailClient student={studentData} />;
 }

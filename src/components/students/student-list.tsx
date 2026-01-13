@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Search, Eye, Trash2, BookOpen, Calendar, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { AddStudentDialog } from "./add-student-dialog";
 
 interface Student {
   id: string;
@@ -98,23 +99,35 @@ export function StudentList({ students: initialStudents }: StudentListProps) {
     });
   };
 
+  const handleStudentAdded = (student: Student) => {
+    setStudents((prev) => [...prev, student].sort((a, b) => 
+      (a.name || "").localeCompare(b.name || "")
+    ));
+    router.refresh();
+  };
+
   if (students.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground mb-4">No students registered yet</p>
-        <p className="text-sm text-muted-foreground">
-          Students can register at the{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            registration page
-          </Link>
-        </p>
+      <div className="space-y-4">
+        <div className="flex justify-end">
+          <AddStudentDialog onStudentAdded={handleStudentAdded} />
+        </div>
+        <div className="text-center py-12 border rounded-md">
+          <p className="text-muted-foreground mb-4">No students registered yet</p>
+          <p className="text-sm text-muted-foreground">
+            Add a student using the button above, or they can register at the{" "}
+            <Link href="/register" className="text-primary hover:underline">
+              registration page
+            </Link>
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -124,9 +137,12 @@ export function StudentList({ students: initialStudents }: StudentListProps) {
             className="pl-9"
           />
         </div>
-        <p className="text-sm text-muted-foreground">
-          {filteredStudents.length} of {students.length} students
-        </p>
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+          <p className="text-sm text-muted-foreground">
+            {filteredStudents.length} of {students.length} students
+          </p>
+          <AddStudentDialog onStudentAdded={handleStudentAdded} />
+        </div>
       </div>
 
       {filteredStudents.length === 0 ? (

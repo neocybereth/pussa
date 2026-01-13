@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import type { ScheduledClassWithStudent } from "@/lib/database.types";
 
 const createClassSchema = z.object({
   studentId: z.string().min(1, "Student is required"),
@@ -26,46 +27,54 @@ export async function GET(request: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // Build where clause based on role and filters
-    const where: {
-      studentId?: string;
-      startTime?: { gte?: Date; lte?: Date };
-    } = {};
+    // Build query
+    let query = supabase
+      .from("scheduled_classes")
+      .select(
+        `
+        *,
+        student:users!scheduled_classes_student_id_fkey(id, name, email)
+      `
+      )
+      .order("start_time", { ascending: true });
 
     // Students can only see their own classes
     if (session.user.role === "STUDENT") {
-      where.studentId = session.user.id;
+      query = query.eq("student_id", session.user.id);
     } else if (studentId) {
       // Teachers can filter by student
-      where.studentId = studentId;
+      query = query.eq("student_id", studentId);
     }
 
     // Date range filter
-    if (startDate || endDate) {
-      where.startTime = {};
-      if (startDate) {
-        where.startTime.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.startTime.lte = new Date(endDate);
-      }
+    if (startDate) {
+      query = query.gte("start_time", startDate);
+    }
+    if (endDate) {
+      query = query.lte("start_time", endDate);
     }
 
-    const classes = await prisma.scheduledClass.findMany({
-      where,
-      orderBy: { startTime: "asc" },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const { data, error } = await query;
 
-    return NextResponse.json(classes);
+    if (error) throw error;
+
+    const classes = data as unknown as ScheduledClassWithStudent[];
+
+    // Map to camelCase for frontend compatibility
+    const mappedClasses = (classes || []).map((c) => ({
+      id: c.id,
+      studentId: c.student_id,
+      title: c.title,
+      startTime: c.start_time,
+      endTime: c.end_time,
+      paymentStatus: c.payment_status,
+      notes: c.notes,
+      createdAt: c.created_at,
+      updatedAt: c.updated_at,
+      student: c.student,
+    }));
+
+    return NextResponse.json(mappedClasses);
   } catch (error) {
     console.error("Error fetching classes:", error);
     return NextResponse.json(
@@ -101,11 +110,14 @@ export async function POST(request: Request) {
       result.data;
 
     // Verify student exists
-    const student = await prisma.user.findUnique({
-      where: { id: studentId, role: "STUDENT" },
-    });
+    const { data: student, error: studentError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", studentId)
+      .eq("role", "STUDENT")
+      .single();
 
-    if (!student) {
+    if (studentError || !student) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
@@ -117,27 +129,43 @@ export async function POST(request: Request) {
       );
     }
 
-    const scheduledClass = await prisma.scheduledClass.create({
-      data: {
-        studentId,
+    const { data, error } = await supabase
+      .from("scheduled_classes")
+      .insert({
+        student_id: studentId,
         title,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
+        start_time: startTime,
+        end_time: endTime,
         notes,
-        paymentStatus: paymentStatus || "UNPAID",
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+        payment_status: paymentStatus || "UNPAID",
+      })
+      .select(
+        `
+        *,
+        student:users!scheduled_classes_student_id_fkey(id, name, email)
+      `
+      )
+      .single();
 
-    return NextResponse.json(scheduledClass, { status: 201 });
+    if (error) throw error;
+
+    const scheduledClass = data as unknown as ScheduledClassWithStudent;
+
+    return NextResponse.json(
+      {
+        id: scheduledClass.id,
+        studentId: scheduledClass.student_id,
+        title: scheduledClass.title,
+        startTime: scheduledClass.start_time,
+        endTime: scheduledClass.end_time,
+        paymentStatus: scheduledClass.payment_status,
+        notes: scheduledClass.notes,
+        createdAt: scheduledClass.created_at,
+        updatedAt: scheduledClass.updated_at,
+        student: scheduledClass.student,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating class:", error);
     return NextResponse.json(

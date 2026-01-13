@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,62 +24,81 @@ export default async function TeacherDashboardPage() {
 
   // Fetch data in parallel
   const [
-    studentCount,
-    exerciseCount,
-    upcomingClasses,
-    recentStudents,
-    paymentStats,
+    studentCountResult,
+    exerciseCountResult,
+    upcomingClassesResult,
+    recentStudentsResult,
+    paidCountResult,
+    unpaidCountResult,
   ] = await Promise.all([
     // Count total students
-    prisma.user.count({
-      where: { role: "STUDENT" },
-    }),
+    supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "STUDENT"),
     // Count total exercises
-    prisma.exercise.count(),
+    supabase
+      .from("exercises")
+      .select("*", { count: "exact", head: true }),
     // Get upcoming classes this week
-    prisma.scheduledClass.findMany({
-      where: {
-        startTime: {
-          gte: today,
-          lte: endOfWeek,
-        },
-      },
-      include: {
-        student: {
-          select: { name: true, email: true },
-        },
-      },
-      orderBy: { startTime: "asc" },
-      take: 5,
-    }),
+    supabase
+      .from("scheduled_classes")
+      .select(`
+        *,
+        student:users(name, email)
+      `)
+      .gte("start_time", today.toISOString())
+      .lte("start_time", endOfWeek.toISOString())
+      .order("start_time", { ascending: true })
+      .limit(5),
     // Get recently registered students
-    prisma.user.findMany({
-      where: { role: "STUDENT" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-        _count: {
-          select: {
-            assignedExercises: true,
-            scheduledClasses: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-    // Get payment stats for all unpaid classes
-    prisma.scheduledClass.groupBy({
-      by: ["paymentStatus"],
-      _count: true,
-    }),
+    supabase
+      .from("users")
+      .select("id, name, email, created_at")
+      .eq("role", "STUDENT")
+      .order("created_at", { ascending: false })
+      .limit(5),
+    // Count paid classes
+    supabase
+      .from("scheduled_classes")
+      .select("*", { count: "exact", head: true })
+      .eq("payment_status", "PAID"),
+    // Count unpaid classes
+    supabase
+      .from("scheduled_classes")
+      .select("*", { count: "exact", head: true })
+      .eq("payment_status", "UNPAID"),
   ]);
 
-  // Calculate unpaid revenue
-  const unpaidCount = paymentStats.find((s) => s.paymentStatus === "UNPAID")?._count || 0;
-  const paidCount = paymentStats.find((s) => s.paymentStatus === "PAID")?._count || 0;
+  const studentCount = studentCountResult.count || 0;
+  const exerciseCount = exerciseCountResult.count || 0;
+  const upcomingClasses = upcomingClassesResult.data || [];
+  const recentStudentsRaw = recentStudentsResult.data || [];
+  const paidCount = paidCountResult.count || 0;
+  const unpaidCount = unpaidCountResult.count || 0;
+
+  // Get counts for recent students
+  const recentStudents = await Promise.all(
+    recentStudentsRaw.map(async (student) => {
+      const [exercisesCount, classesCount] = await Promise.all([
+        supabase
+          .from("student_exercises")
+          .select("*", { count: "exact", head: true })
+          .eq("student_id", student.id),
+        supabase
+          .from("scheduled_classes")
+          .select("*", { count: "exact", head: true })
+          .eq("student_id", student.id),
+      ]);
+      return {
+        ...student,
+        _count: {
+          assignedExercises: exercisesCount.count || 0,
+          scheduledClasses: classesCount.count || 0,
+        },
+      };
+    })
+  );
 
   // Format date for display
   const formatDate = (date: Date) => {
@@ -199,11 +218,11 @@ export default async function TeacherDashboardPage() {
                     <div className="space-y-1">
                       <p className="font-medium text-sm">{cls.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {cls.student.name || cls.student.email} • {formatDate(cls.startTime)} at {formatTime(cls.startTime)}
+                        {cls.student?.name || cls.student?.email} • {formatDate(new Date(cls.start_time))} at {formatTime(new Date(cls.start_time))}
                       </p>
                     </div>
-                    <Badge variant={cls.paymentStatus === "PAID" ? "default" : "secondary"}>
-                      {cls.paymentStatus === "PAID" ? "Paid" : "Unpaid"}
+                    <Badge variant={cls.payment_status === "PAID" ? "default" : "secondary"}>
+                      {cls.payment_status === "PAID" ? "Paid" : "Unpaid"}
                     </Badge>
                   </div>
                 ))}

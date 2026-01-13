@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { TeacherCalendar } from "@/components/calendar/teacher-calendar";
 import { Plus } from "lucide-react";
@@ -13,26 +13,25 @@ export default async function TeacherCalendarPage() {
     redirect("/login");
   }
 
-  const classes = await prisma.scheduledClass.findMany({
-    orderBy: { startTime: "asc" },
-    include: {
-      student: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-  });
+  const { data: classes, error } = await supabase
+    .from("scheduled_classes")
+    .select(`
+      *,
+      student:users(id, name, email)
+    `)
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching classes:", error);
+  }
 
   // Serialize dates for client component
-  const serializedClasses = classes.map((c) => ({
+  const serializedClasses = (classes || []).map((c) => ({
     id: c.id,
     title: c.title,
-    startTime: c.startTime.toISOString(),
-    endTime: c.endTime.toISOString(),
-    paymentStatus: c.paymentStatus,
+    startTime: c.start_time,
+    endTime: c.end_time,
+    paymentStatus: c.payment_status,
     notes: c.notes,
     student: c.student,
   }));

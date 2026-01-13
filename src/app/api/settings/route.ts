@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { Prisma } from "@/generated/prisma/client";
 
 const pricingItemSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name is too long"),
@@ -41,21 +40,39 @@ const updateSettingsSchema = z.object({
 export async function GET() {
   try {
     // Get the first (and only) settings record, or create one if it doesn't exist
-    let settings = await prisma.siteSettings.findFirst();
+    let { data: settings, error } = await supabase
+      .from("site_settings")
+      .select("*")
+      .limit(1)
+      .single();
 
-    if (!settings) {
-      settings = await prisma.siteSettings.create({
-        data: {
-          teacherName: null,
-          teacherBio: null,
-          teacherPhoto: null,
-          pricing: Prisma.NullableJsonNullValueInput.DbNull,
-          contactInfo: Prisma.NullableJsonNullValueInput.DbNull,
-        },
-      });
+    if (error || !settings) {
+      // Create default settings
+      const { data: newSettings, error: insertError } = await supabase
+        .from("site_settings")
+        .insert({
+          teacher_name: null,
+          teacher_bio: null,
+          teacher_photo: null,
+          pricing: null,
+          contact_info: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      settings = newSettings;
     }
 
-    return NextResponse.json(settings);
+    // Map to camelCase for frontend compatibility
+    return NextResponse.json({
+      id: settings.id,
+      teacherName: settings.teacher_name,
+      teacherBio: settings.teacher_bio,
+      teacherPhoto: settings.teacher_photo,
+      pricing: settings.pricing,
+      contactInfo: settings.contact_info,
+    });
   } catch (error) {
     console.error("Error fetching settings:", error);
     return NextResponse.json(
@@ -88,35 +105,65 @@ export async function PUT(request: Request) {
     }
 
     // Get existing settings or create new
-    let settings = await prisma.siteSettings.findFirst();
+    let { data: settings } = await supabase
+      .from("site_settings")
+      .select("id")
+      .limit(1)
+      .single();
 
     if (!settings) {
-      settings = await prisma.siteSettings.create({
-        data: {
-          teacherName: null,
-          teacherBio: null,
-          teacherPhoto: null,
-          pricing: Prisma.NullableJsonNullValueInput.DbNull,
-          contactInfo: Prisma.NullableJsonNullValueInput.DbNull,
-        },
-      });
+      const { data: newSettings, error: insertError } = await supabase
+        .from("site_settings")
+        .insert({
+          teacher_name: null,
+          teacher_bio: null,
+          teacher_photo: null,
+          pricing: null,
+          contact_info: null,
+        })
+        .select("id")
+        .single();
+
+      if (insertError) throw insertError;
+      settings = newSettings;
     }
 
     // Prepare update data
-    const { teacherPhoto, ...restData } = result.data;
-    const updateData: Record<string, unknown> = { ...restData };
-
-    // Handle empty string for teacherPhoto (should be null)
-    if (teacherPhoto !== undefined) {
-      updateData.teacherPhoto = teacherPhoto === "" ? null : teacherPhoto;
+    const updateData: Record<string, unknown> = {};
+    
+    if (result.data.teacherName !== undefined) {
+      updateData.teacher_name = result.data.teacherName;
+    }
+    if (result.data.teacherBio !== undefined) {
+      updateData.teacher_bio = result.data.teacherBio;
+    }
+    if (result.data.teacherPhoto !== undefined) {
+      updateData.teacher_photo = result.data.teacherPhoto === "" ? null : result.data.teacherPhoto;
+    }
+    if (result.data.pricing !== undefined) {
+      updateData.pricing = result.data.pricing;
+    }
+    if (result.data.contactInfo !== undefined) {
+      updateData.contact_info = result.data.contactInfo;
     }
 
-    const updatedSettings = await prisma.siteSettings.update({
-      where: { id: settings.id },
-      data: updateData,
-    });
+    const { data: updatedSettings, error } = await supabase
+      .from("site_settings")
+      .update(updateData)
+      .eq("id", settings.id)
+      .select()
+      .single();
 
-    return NextResponse.json(updatedSettings);
+    if (error) throw error;
+
+    return NextResponse.json({
+      id: updatedSettings.id,
+      teacherName: updatedSettings.teacher_name,
+      teacherBio: updatedSettings.teacher_bio,
+      teacherPhoto: updatedSettings.teacher_photo,
+      pricing: updatedSettings.pricing,
+      contactInfo: updatedSettings.contact_info,
+    });
   } catch (error) {
     console.error("Error updating settings:", error);
     return NextResponse.json(

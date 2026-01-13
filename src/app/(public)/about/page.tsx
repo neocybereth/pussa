@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone, MapPin, Music } from "lucide-react";
@@ -19,7 +19,12 @@ interface ContactInfo {
 }
 
 async function getSettings() {
-  const settings = await prisma.siteSettings.findFirst();
+  const { data: settings } = await supabase
+    .from("site_settings")
+    .select("*")
+    .limit(1)
+    .single();
+  
   return settings;
 }
 
@@ -27,13 +32,13 @@ export default async function AboutPage() {
   const settings = await getSettings();
 
   const pricing = settings?.pricing as PricingItem[] | null;
-  const contactInfo = settings?.contactInfo as ContactInfo | null;
+  const contactInfo = settings?.contact_info as ContactInfo | null;
 
   // Check if we have any content to display
   const hasContent =
-    settings?.teacherName ||
-    settings?.teacherBio ||
-    settings?.teacherPhoto ||
+    settings?.teacher_name ||
+    settings?.teacher_bio ||
+    settings?.teacher_photo ||
     (pricing && pricing.length > 0) ||
     (contactInfo && (contactInfo.email || contactInfo.phone || contactInfo.location));
 
@@ -54,11 +59,11 @@ export default async function AboutPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col md:flex-row gap-8 mb-12">
           {/* Photo */}
-          {settings?.teacherPhoto && (
+          {settings?.teacher_photo && (
             <div className="flex-shrink-0">
               <img
-                src={settings.teacherPhoto}
-                alt={settings.teacherName || "Music Teacher"}
+                src={settings.teacher_photo}
+                alt={settings.teacher_name || "Music Teacher"}
                 className="w-48 h-48 md:w-64 md:h-64 rounded-lg object-cover shadow-lg mx-auto md:mx-0"
               />
             </div>
@@ -69,14 +74,14 @@ export default async function AboutPage() {
             <div className="flex items-center gap-3 mb-4">
               <Music className="h-8 w-8 text-primary" />
               <h1 className="text-3xl md:text-4xl font-bold">
-                {settings?.teacherName || "Music Teacher"}
+                {settings?.teacher_name || "Music Teacher"}
               </h1>
             </div>
 
-            {settings?.teacherBio && (
+            {settings?.teacher_bio && (
               <div className="prose prose-neutral dark:prose-invert max-w-none">
                 <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {settings.teacherBio}
+                  {settings.teacher_bio}
                 </p>
               </div>
             )}

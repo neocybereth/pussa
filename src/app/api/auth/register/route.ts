@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { createAuthUser } from "@/lib/supabase-auth";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -22,30 +21,26 @@ export async function POST(request: Request) {
 
     const { name, email, password } = result.data;
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 400 }
-      );
+    // Create user in Supabase Auth with metadata
+    let authUser;
+    try {
+      authUser = await createAuthUser(email, password, {
+        name,
+        role: "STUDENT",
+      });
+    } catch (authError: unknown) {
+      const error = authError as { message?: string };
+      if (error.message?.includes("already been registered")) {
+        return NextResponse.json(
+          { error: "An account with this email already exists" },
+          { status: 400 }
+        );
+      }
+      throw authError;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: "STUDENT",
-      },
-    });
-
     return NextResponse.json(
-      { message: "Account created successfully", userId: user.id },
+      { message: "Account created successfully", userId: authUser.id },
       { status: 201 }
     );
   } catch (error) {

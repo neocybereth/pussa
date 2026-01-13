@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Calendar, Clock, DollarSign, ArrowRight } from "lucide-react";
 import { AudioPlayer } from "@/components/exercises/audio-player";
+import { TeacherProfileCard } from "@/components/profile/teacher-profile-card";
 
 export default async function StudentDashboardPage() {
   const session = await auth();
@@ -26,42 +27,43 @@ export default async function StudentDashboardPage() {
   endOfWeek.setDate(endOfWeek.getDate() + 7);
 
   // Fetch data in parallel
-  const [exerciseCount, upcomingClasses, recentExercises, paymentStats] = await Promise.all([
+  const [exerciseCountResult, upcomingClassesResult, recentExercisesResult, unpaidCountResult] = await Promise.all([
     // Count total assigned exercises
-    prisma.studentExercise.count({
-      where: { studentId: userId },
-    }),
+    supabase
+      .from("student_exercises")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", userId),
     // Get upcoming classes this week
-    prisma.scheduledClass.findMany({
-      where: {
-        studentId: userId,
-        startTime: {
-          gte: today,
-          lte: endOfWeek,
-        },
-      },
-      orderBy: { startTime: "asc" },
-      take: 5,
-    }),
+    supabase
+      .from("scheduled_classes")
+      .select("*")
+      .eq("student_id", userId)
+      .gte("start_time", today.toISOString())
+      .lte("start_time", endOfWeek.toISOString())
+      .order("start_time", { ascending: true })
+      .limit(5),
     // Get recently assigned exercises
-    prisma.studentExercise.findMany({
-      where: { studentId: userId },
-      include: {
-        exercise: true,
-      },
-      orderBy: { assignedAt: "desc" },
-      take: 3,
-    }),
-    // Get payment stats
-    prisma.scheduledClass.groupBy({
-      by: ["paymentStatus"],
-      where: { studentId: userId },
-      _count: true,
-    }),
+    supabase
+      .from("student_exercises")
+      .select(`
+        *,
+        exercise:exercises(*)
+      `)
+      .eq("student_id", userId)
+      .order("assigned_at", { ascending: false })
+      .limit(3),
+    // Get unpaid count
+    supabase
+      .from("scheduled_classes")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", userId)
+      .eq("payment_status", "UNPAID"),
   ]);
 
-  // Calculate unpaid classes count
-  const unpaidCount = paymentStats.find((s) => s.paymentStatus === "UNPAID")?._count || 0;
+  const exerciseCount = exerciseCountResult.count || 0;
+  const upcomingClasses = upcomingClassesResult.data || [];
+  const recentExercises = recentExercisesResult.data || [];
+  const unpaidCount = unpaidCountResult.count || 0;
 
   // Format date for display
   const formatDate = (date: Date) => {
@@ -123,10 +125,10 @@ export default async function StudentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {upcomingClasses.length > 0 ? formatDate(upcomingClasses[0].startTime) : "--"}
+              {upcomingClasses.length > 0 ? formatDate(new Date(upcomingClasses[0].start_time)) : "--"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {upcomingClasses.length > 0 ? formatTime(upcomingClasses[0].startTime) : "No upcoming classes"}
+              {upcomingClasses.length > 0 ? formatTime(new Date(upcomingClasses[0].start_time)) : "No upcoming classes"}
             </p>
           </CardContent>
         </Card>
@@ -175,11 +177,11 @@ export default async function StudentDashboardPage() {
                     <div className="space-y-1">
                       <p className="font-medium text-sm">{cls.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(cls.startTime)} at {formatTime(cls.startTime)}
+                        {formatDate(new Date(cls.start_time))} at {formatTime(new Date(cls.start_time))}
                       </p>
                     </div>
-                    <Badge variant={cls.paymentStatus === "PAID" ? "default" : "secondary"}>
-                      {cls.paymentStatus === "PAID" ? "Paid" : "Unpaid"}
+                    <Badge variant={cls.payment_status === "PAID" ? "default" : "secondary"}>
+                      {cls.payment_status === "PAID" ? "Paid" : "Unpaid"}
                     </Badge>
                   </div>
                 ))}
@@ -212,16 +214,16 @@ export default async function StudentDashboardPage() {
                 {recentExercises.map((se) => (
                   <div key={se.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{se.exercise.title}</p>
+                      <p className="font-medium text-sm">{se.exercise?.title}</p>
                       <span className="text-xs text-muted-foreground">
                         {new Intl.DateTimeFormat("en-US", {
                           month: "short",
                           day: "numeric",
-                        }).format(se.assignedAt)}
+                        }).format(new Date(se.assigned_at))}
                       </span>
                     </div>
-                    {se.exercise.audioUrl && (
-                      <AudioPlayer src={se.exercise.audioUrl} compact />
+                    {se.exercise?.audio_url && (
+                      <AudioPlayer src={se.exercise.audio_url} compact />
                     )}
                   </div>
                 ))}
@@ -230,6 +232,9 @@ export default async function StudentDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Teacher Profile Section */}
+      <TeacherProfileCard />
     </div>
   );
 }

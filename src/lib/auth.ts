@@ -1,6 +1,8 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { NextAuthConfig } from "next-auth";
+import { supabase } from "@/lib/db";
+import { verifyUserPassword } from "@/lib/supabase-auth";
 
 export type Role = "TEACHER" | "STUDENT";
 
@@ -16,7 +18,7 @@ declare module "next-auth" {
   }
 }
 
-export const authConfig = {
+const authConfig = {
   providers: [
     Credentials({
       name: "credentials",
@@ -29,24 +31,25 @@ export const authConfig = {
           return null;
         }
 
-        // Dynamic import to avoid edge runtime issues
-        const { prisma } = await import("@/lib/db");
-        const bcrypt = await import("bcryptjs");
-
         const email = credentials.email as string;
         const password = credentials.password as string;
 
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
+        // Verify password with Supabase Auth
+        const authUser = await verifyUserPassword(email, password);
 
-        if (!user) {
+        if (!authUser) {
           return null;
         }
 
-        const passwordMatch = await bcrypt.compare(password, user.password);
+        // Get user profile from database (this has the correct role)
+        const { data: user, error } = await supabase
+          .from("users")
+          .select("id, email, name, role")
+          .eq("id", authUser.id)
+          .single();
 
-        if (!passwordMatch) {
+        if (error || !user) {
+          console.error("User profile not found:", error);
           return null;
         }
 
@@ -60,63 +63,6 @@ export const authConfig = {
     }),
   ],
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const userRole = auth?.user?.role;
-      const pathname = nextUrl.pathname;
-
-      const isAuthPage =
-        pathname.startsWith("/login") || pathname.startsWith("/register");
-      const isDashboardPage = pathname.startsWith("/dashboard");
-      const isTeacherPage = pathname.startsWith("/dashboard/teacher");
-      const isStudentPage = pathname.startsWith("/dashboard/student");
-      const isPublicPage = pathname === "/" || pathname.startsWith("/about");
-
-      // Allow public pages
-      if (isPublicPage) {
-        return true;
-      }
-
-      // Redirect logged-in users away from auth pages
-      if (isAuthPage && isLoggedIn) {
-        const redirectUrl =
-          userRole === "TEACHER"
-            ? "/dashboard/teacher"
-            : "/dashboard/student";
-        return Response.redirect(new URL(redirectUrl, nextUrl));
-      }
-
-      // Allow auth pages for non-logged-in users
-      if (isAuthPage) {
-        return true;
-      }
-
-      // Redirect non-logged-in users to login
-      if (isDashboardPage && !isLoggedIn) {
-        return Response.redirect(new URL("/login", nextUrl));
-      }
-
-      // Redirect to role-specific dashboard if accessing generic /dashboard
-      if (pathname === "/dashboard" && isLoggedIn) {
-        const redirectUrl =
-          userRole === "TEACHER"
-            ? "/dashboard/teacher"
-            : "/dashboard/student";
-        return Response.redirect(new URL(redirectUrl, nextUrl));
-      }
-
-      // Prevent students from accessing teacher pages
-      if (isTeacherPage && userRole === "STUDENT") {
-        return Response.redirect(new URL("/dashboard/student", nextUrl));
-      }
-
-      // Prevent teachers from accessing student pages
-      if (isStudentPage && userRole === "TEACHER") {
-        return Response.redirect(new URL("/dashboard/teacher", nextUrl));
-      }
-
-      return true;
-    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;

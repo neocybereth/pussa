@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { ExerciseForm } from "@/components/exercises/exercise-form";
 
 interface EditExercisePageProps {
@@ -16,20 +16,24 @@ export default async function EditExercisePage({ params }: EditExercisePageProps
 
   const { id } = await params;
 
-  const exercise = await prisma.exercise.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      audioUrl: true,
-      audioKey: true,
-    },
-  });
+  const { data: exercise, error } = await supabase
+    .from("exercises")
+    .select("id, title, description, audio_url, audio_key")
+    .eq("id", id)
+    .single();
 
-  if (!exercise) {
+  if (error || !exercise) {
     notFound();
   }
+
+  // Map to camelCase for the form
+  const exerciseData = {
+    id: exercise.id,
+    title: exercise.title,
+    description: exercise.description,
+    audioUrl: exercise.audio_url,
+    audioKey: exercise.audio_key,
+  };
 
   return (
     <div className="space-y-6">
@@ -40,7 +44,7 @@ export default async function EditExercisePage({ params }: EditExercisePageProps
         </p>
       </div>
 
-      <ExerciseForm mode="edit" exercise={exercise} />
+      <ExerciseForm mode="edit" exercise={exerciseData} />
     </div>
   );
 }

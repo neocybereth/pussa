@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import type { ScheduledClassWithStudent } from "@/lib/database.types";
 
 const updateClassSchema = z.object({
   studentId: z.string().min(1, "Student is required").optional(),
@@ -30,32 +31,41 @@ export async function GET(
 
     const { id } = await params;
 
-    const scheduledClass = await prisma.scheduledClass.findUnique({
-      where: { id },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const { data, error } = await supabase
+      .from("scheduled_classes")
+      .select(`
+        *,
+        student:users!scheduled_classes_student_id_fkey(id, name, email)
+      `)
+      .eq("id", id)
+      .single();
 
-    if (!scheduledClass) {
+    if (error || !data) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
+
+    const scheduledClass = data as unknown as ScheduledClassWithStudent;
 
     // Students can only view their own classes
     if (
       session.user.role === "STUDENT" &&
-      scheduledClass.studentId !== session.user.id
+      scheduledClass.student_id !== session.user.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(scheduledClass);
+    return NextResponse.json({
+      id: scheduledClass.id,
+      studentId: scheduledClass.student_id,
+      title: scheduledClass.title,
+      startTime: scheduledClass.start_time,
+      endTime: scheduledClass.end_time,
+      paymentStatus: scheduledClass.payment_status,
+      notes: scheduledClass.notes,
+      createdAt: scheduledClass.created_at,
+      updatedAt: scheduledClass.updated_at,
+      student: scheduledClass.student,
+    });
   } catch (error) {
     console.error("Error fetching class:", error);
     return NextResponse.json(
@@ -91,23 +101,29 @@ export async function PUT(
       return NextResponse.json({ error: firstError }, { status: 400 });
     }
 
-    const existingClass = await prisma.scheduledClass.findUnique({
-      where: { id },
-    });
+    // Get existing class
+    const { data: existingClass, error: findError } = await supabase
+      .from("scheduled_classes")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (!existingClass) {
+    if (findError || !existingClass) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
     const { studentId, startTime, endTime, ...restData } = result.data;
 
     // If changing student, verify new student exists
-    if (studentId && studentId !== existingClass.studentId) {
-      const student = await prisma.user.findUnique({
-        where: { id: studentId, role: "STUDENT" },
-      });
+    if (studentId && studentId !== existingClass.student_id) {
+      const { data: student, error: studentError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", studentId)
+        .eq("role", "STUDENT")
+        .single();
 
-      if (!student) {
+      if (studentError || !student) {
         return NextResponse.json(
           { error: "Student not found" },
           { status: 404 }
@@ -118,8 +134,8 @@ export async function PUT(
     // Validate end time is after start time if either is being changed
     const newStartTime = startTime
       ? new Date(startTime)
-      : existingClass.startTime;
-    const newEndTime = endTime ? new Date(endTime) : existingClass.endTime;
+      : new Date(existingClass.start_time);
+    const newEndTime = endTime ? new Date(endTime) : new Date(existingClass.end_time);
 
     if (newEndTime <= newStartTime) {
       return NextResponse.json(
@@ -128,26 +144,41 @@ export async function PUT(
       );
     }
 
-    const updatedClass = await prisma.scheduledClass.update({
-      where: { id },
-      data: {
-        ...restData,
-        ...(studentId && { studentId }),
-        ...(startTime && { startTime: new Date(startTime) }),
-        ...(endTime && { endTime: new Date(endTime) }),
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    // Build update data
+    const updateData: Record<string, unknown> = {};
+    if (restData.title !== undefined) updateData.title = restData.title;
+    if (restData.notes !== undefined) updateData.notes = restData.notes;
+    if (restData.paymentStatus !== undefined) updateData.payment_status = restData.paymentStatus;
+    if (studentId) updateData.student_id = studentId;
+    if (startTime) updateData.start_time = startTime;
+    if (endTime) updateData.end_time = endTime;
 
-    return NextResponse.json(updatedClass);
+    const { data, error } = await supabase
+      .from("scheduled_classes")
+      .update(updateData)
+      .eq("id", id)
+      .select(`
+        *,
+        student:users!scheduled_classes_student_id_fkey(id, name, email)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    const updatedClass = data as unknown as ScheduledClassWithStudent;
+
+    return NextResponse.json({
+      id: updatedClass.id,
+      studentId: updatedClass.student_id,
+      title: updatedClass.title,
+      startTime: updatedClass.start_time,
+      endTime: updatedClass.end_time,
+      paymentStatus: updatedClass.payment_status,
+      notes: updatedClass.notes,
+      createdAt: updatedClass.created_at,
+      updatedAt: updatedClass.updated_at,
+      student: updatedClass.student,
+    });
   } catch (error) {
     console.error("Error updating class:", error);
     return NextResponse.json(
@@ -175,17 +206,23 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existingClass = await prisma.scheduledClass.findUnique({
-      where: { id },
-    });
+    // Check if class exists
+    const { data: existingClass, error: findError } = await supabase
+      .from("scheduled_classes")
+      .select("id")
+      .eq("id", id)
+      .single();
 
-    if (!existingClass) {
+    if (findError || !existingClass) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    await prisma.scheduledClass.delete({
-      where: { id },
-    });
+    const { error } = await supabase
+      .from("scheduled_classes")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
 
     return NextResponse.json({ message: "Class deleted successfully" });
   } catch (error) {
@@ -229,31 +266,43 @@ export async function PATCH(
       );
     }
 
-    const existingClass = await prisma.scheduledClass.findUnique({
-      where: { id },
-    });
+    // Check if class exists
+    const { data: existingClass, error: findError } = await supabase
+      .from("scheduled_classes")
+      .select("id")
+      .eq("id", id)
+      .single();
 
-    if (!existingClass) {
+    if (findError || !existingClass) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    const updatedClass = await prisma.scheduledClass.update({
-      where: { id },
-      data: {
-        paymentStatus: result.data.paymentStatus,
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const { data, error } = await supabase
+      .from("scheduled_classes")
+      .update({ payment_status: result.data.paymentStatus })
+      .eq("id", id)
+      .select(`
+        *,
+        student:users!scheduled_classes_student_id_fkey(id, name, email)
+      `)
+      .single();
 
-    return NextResponse.json(updatedClass);
+    if (error) throw error;
+
+    const updatedClass = data as unknown as ScheduledClassWithStudent;
+
+    return NextResponse.json({
+      id: updatedClass.id,
+      studentId: updatedClass.student_id,
+      title: updatedClass.title,
+      startTime: updatedClass.start_time,
+      endTime: updatedClass.end_time,
+      paymentStatus: updatedClass.payment_status,
+      notes: updatedClass.notes,
+      createdAt: updatedClass.created_at,
+      updatedAt: updatedClass.updated_at,
+      student: updatedClass.student,
+    });
   } catch (error) {
     console.error("Error updating payment status:", error);
     return NextResponse.json(

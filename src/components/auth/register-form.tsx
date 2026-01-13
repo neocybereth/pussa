@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,7 +78,8 @@ export function RegisterForm() {
         return;
       }
 
-      router.push("/login?registered=true");
+      toast.success("Registration email sent! Check your email to confirm your account.");
+      router.push("/login");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

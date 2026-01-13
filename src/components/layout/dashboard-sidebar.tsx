@@ -3,7 +3,7 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import {
   Music,
   Users,
@@ -12,6 +12,8 @@ import {
   Home,
   BookOpen,
   X,
+  UserCircle,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ const teacherNavItems: NavItem[] = [
   { href: "/dashboard/teacher/students", label: "Students", icon: Users },
   { href: "/dashboard/teacher/exercises", label: "Exercises", icon: BookOpen },
   { href: "/dashboard/teacher/calendar", label: "Calendar", icon: Calendar },
+  { href: "/dashboard/profile", label: "My Profile", icon: UserCircle },
   { href: "/dashboard/teacher/settings", label: "Settings", icon: Settings },
 ];
 
@@ -116,8 +119,8 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
           })}
         </nav>
 
-        {/* Role indicator */}
-        <div className="border-t p-4">
+        {/* Role indicator and logout */}
+        <div className="border-t p-4 space-y-3">
           <div className="rounded-md bg-muted px-3 py-2">
             <p className="text-xs font-medium text-muted-foreground">
               Logged in as
@@ -126,6 +129,14 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
               {isTeacher ? "Teacher" : "Student"}
             </p>
           </div>
+          <Button
+            variant="outline"
+            className="w-full justify-start gap-2"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </Button>
         </div>
       </aside>
     </>

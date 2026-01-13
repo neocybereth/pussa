@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore, useState, useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import type { EventClickArg, DateSelectArg, EventInput } from "@fullcalendar/core";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface CalendarEvent {
   id: string;
@@ -41,11 +43,43 @@ export function CalendarView({
   height = "auto",
 }: CalendarViewProps) {
   const calendarRef = useRef<FullCalendar>(null);
+  const [currentTitle, setCurrentTitle] = useState("");
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false
   );
+
+  const updateTitle = useCallback(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      setCurrentTitle(api.view.title);
+    }
+  }, []);
+
+  const handlePrev = useCallback(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.prev();
+      updateTitle();
+    }
+  }, [updateTitle]);
+
+  const handleNext = useCallback(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.next();
+      updateTitle();
+    }
+  }, [updateTitle]);
+
+  const handleToday = useCallback(() => {
+    const api = calendarRef.current?.getApi();
+    if (api) {
+      api.today();
+      updateTitle();
+    }
+  }, [updateTitle]);
 
   const handleEventClick = (info: EventClickArg) => {
     if (onEventClick) {
@@ -81,15 +115,48 @@ export function CalendarView({
 
   return (
     <div className="calendar-wrapper">
+      {/* Custom navigation controls */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrev}
+            className="flex items-center gap-1"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToday}
+          >
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNext}
+            className="flex items-center gap-1"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <h2 className="text-lg font-semibold">{currentTitle}</h2>
+      </div>
+
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
         initialView={initialView}
         headerToolbar={{
-          left: "prev,next today",
-          center: "title",
+          left: "",
+          center: "",
           right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
         }}
+        datesSet={() => updateTitle()}
         events={formattedEvents}
         eventClick={handleEventClick}
         selectable={selectable}

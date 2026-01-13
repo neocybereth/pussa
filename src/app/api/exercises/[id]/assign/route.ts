@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 const assignExerciseSchema = z.object({
@@ -29,32 +29,33 @@ export async function GET(
 
     const { id } = await params;
 
-    const exercise = await prisma.exercise.findUnique({
-      where: { id },
-      include: {
-        assignedTo: {
-          include: {
-            student: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    // Check if exercise exists
+    const { data: exercise, error: exerciseError } = await supabase
+      .from("exercises")
+      .select("id")
+      .eq("id", id)
+      .single();
 
-    if (!exercise) {
+    if (exerciseError || !exercise) {
       return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
     }
 
+    // Get assigned students
+    const { data: assignments, error } = await supabase
+      .from("student_exercises")
+      .select(`
+        *,
+        student:users(id, name, email)
+      `)
+      .eq("exercise_id", id);
+
+    if (error) throw error;
+
     return NextResponse.json({
-      exerciseId: exercise.id,
-      assignedStudents: exercise.assignedTo.map((a) => ({
+      exerciseId: id,
+      assignedStudents: (assignments || []).map((a) => ({
         ...a.student,
-        assignedAt: a.assignedAt,
+        assignedAt: a.assigned_at,
         notes: a.notes,
       })),
     });
@@ -94,41 +95,49 @@ export async function POST(
     }
 
     // Verify exercise exists
-    const exercise = await prisma.exercise.findUnique({
-      where: { id },
-    });
+    const { data: exercise, error: exerciseError } = await supabase
+      .from("exercises")
+      .select("id")
+      .eq("id", id)
+      .single();
 
-    if (!exercise) {
+    if (exerciseError || !exercise) {
       return NextResponse.json({ error: "Exercise not found" }, { status: 404 });
     }
 
     // Verify all students exist and are students
-    const students = await prisma.user.findMany({
-      where: {
-        id: { in: result.data.studentIds },
-        role: "STUDENT",
-      },
-    });
+    const { data: students, error: studentsError } = await supabase
+      .from("users")
+      .select("id")
+      .in("id", result.data.studentIds)
+      .eq("role", "STUDENT");
 
-    if (students.length !== result.data.studentIds.length) {
+    if (studentsError) throw studentsError;
+
+    if (!students || students.length !== result.data.studentIds.length) {
       return NextResponse.json(
         { error: "One or more students not found" },
         { status: 400 }
       );
     }
 
-    // Create assignments (skip duplicates)
-    const assignments = await prisma.studentExercise.createMany({
-      data: result.data.studentIds.map((studentId) => ({
-        studentId,
-        exerciseId: id,
-      })),
-      skipDuplicates: true,
-    });
+    // Create assignments (upsert to skip duplicates)
+    const { data: assignments, error: insertError } = await supabase
+      .from("student_exercises")
+      .upsert(
+        result.data.studentIds.map((studentId) => ({
+          student_id: studentId,
+          exercise_id: id,
+        })),
+        { onConflict: "student_id,exercise_id", ignoreDuplicates: true }
+      )
+      .select();
+
+    if (insertError) throw insertError;
 
     return NextResponse.json({
-      message: `Exercise assigned to ${assignments.count} student(s)`,
-      count: assignments.count,
+      message: `Exercise assigned to ${assignments?.length || 0} student(s)`,
+      count: assignments?.length || 0,
     });
   } catch (error) {
     console.error("Error assigning exercise:", error);
@@ -165,15 +174,14 @@ export async function DELETE(
       return NextResponse.json({ error: firstError }, { status: 400 });
     }
 
-    // Delete the assignment using composite key
-    await prisma.studentExercise.delete({
-      where: {
-        studentId_exerciseId: {
-          studentId: result.data.studentId,
-          exerciseId: id,
-        },
-      },
-    });
+    // Delete the assignment
+    const { error } = await supabase
+      .from("student_exercises")
+      .delete()
+      .eq("student_id", result.data.studentId)
+      .eq("exercise_id", id);
+
+    if (error) throw error;
 
     return NextResponse.json({ message: "Assignment removed successfully" });
   } catch (error) {

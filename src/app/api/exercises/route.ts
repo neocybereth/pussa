@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 const createExerciseSchema = z.object({
@@ -23,16 +23,37 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const exercises = await prisma.exercise.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        _count: {
-          select: { assignedTo: true },
-        },
-      },
-    });
+    // Get exercises with count of assignments
+    const { data: exercises, error } = await supabase
+      .from("exercises")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    return NextResponse.json(exercises);
+    if (error) throw error;
+
+    // Get assignment counts for each exercise
+    const exercisesWithCounts = await Promise.all(
+      (exercises || []).map(async (exercise) => {
+        const { count } = await supabase
+          .from("student_exercises")
+          .select("*", { count: "exact", head: true })
+          .eq("exercise_id", exercise.id);
+
+        return {
+          ...exercise,
+          // Map snake_case to camelCase for frontend compatibility
+          audioUrl: exercise.audio_url,
+          audioKey: exercise.audio_key,
+          createdAt: exercise.created_at,
+          updatedAt: exercise.updated_at,
+          _count: {
+            assignedTo: count || 0,
+          },
+        };
+      })
+    );
+
+    return NextResponse.json(exercisesWithCounts);
   } catch (error) {
     console.error("Error fetching exercises:", error);
     return NextResponse.json(
@@ -66,16 +87,29 @@ export async function POST(request: Request) {
 
     const { title, description, audioUrl, audioKey } = result.data;
 
-    const exercise = await prisma.exercise.create({
-      data: {
+    const { data: exercise, error } = await supabase
+      .from("exercises")
+      .insert({
         title,
         description,
-        audioUrl,
-        audioKey,
-      },
-    });
+        audio_url: audioUrl,
+        audio_key: audioKey,
+      })
+      .select()
+      .single();
 
-    return NextResponse.json(exercise, { status: 201 });
+    if (error) throw error;
+
+    return NextResponse.json(
+      {
+        ...exercise,
+        audioUrl: exercise.audio_url,
+        audioKey: exercise.audio_key,
+        createdAt: exercise.created_at,
+        updatedAt: exercise.updated_at,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error creating exercise:", error);
     return NextResponse.json(

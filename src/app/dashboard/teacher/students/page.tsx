@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { StudentList } from "@/components/students/student-list";
 
 export default async function TeacherStudentsPage() {
@@ -10,28 +10,42 @@ export default async function TeacherStudentsPage() {
     redirect("/login");
   }
 
-  const students = await prisma.user.findMany({
-    where: { role: "STUDENT" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-      _count: {
-        select: {
-          assignedExercises: true,
-          scheduledClasses: true,
-        },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
+  const { data: students, error } = await supabase
+    .from("users")
+    .select("id, name, email, created_at")
+    .eq("role", "STUDENT")
+    .order("name", { ascending: true });
 
-  // Convert dates to strings for client component
-  const serializedStudents = students.map((student) => ({
-    ...student,
-    createdAt: student.createdAt.toISOString(),
-  }));
+  if (error) {
+    console.error("Error fetching students:", error);
+  }
+
+  // Get counts for each student
+  const studentsWithCounts = await Promise.all(
+    (students || []).map(async (student) => {
+      const [exercisesCount, classesCount] = await Promise.all([
+        supabase
+          .from("student_exercises")
+          .select("*", { count: "exact", head: true })
+          .eq("student_id", student.id),
+        supabase
+          .from("scheduled_classes")
+          .select("*", { count: "exact", head: true })
+          .eq("student_id", student.id),
+      ]);
+
+      return {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        createdAt: student.created_at,
+        _count: {
+          assignedExercises: exercisesCount.count || 0,
+          scheduledClasses: classesCount.count || 0,
+        },
+      };
+    })
+  );
 
   return (
     <div className="space-y-6">
@@ -42,7 +56,7 @@ export default async function TeacherStudentsPage() {
         </p>
       </div>
 
-      <StudentList students={serializedStudents} />
+      <StudentList students={studentsWithCounts} />
     </div>
   );
 }

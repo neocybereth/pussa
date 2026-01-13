@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import { StudentCalendar } from "@/components/calendar/student-calendar";
 
 export default async function StudentCalendarPage() {
@@ -10,20 +10,23 @@ export default async function StudentCalendarPage() {
     redirect("/login");
   }
 
-  const classes = await prisma.scheduledClass.findMany({
-    where: {
-      studentId: session.user.id,
-    },
-    orderBy: { startTime: "asc" },
-  });
+  const { data: classes, error } = await supabase
+    .from("scheduled_classes")
+    .select("*")
+    .eq("student_id", session.user.id)
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching classes:", error);
+  }
 
   // Serialize dates for client component
-  const serializedClasses = classes.map((c) => ({
+  const serializedClasses = (classes || []).map((c) => ({
     id: c.id,
     title: c.title,
-    startTime: c.startTime.toISOString(),
-    endTime: c.endTime.toISOString(),
-    paymentStatus: c.paymentStatus,
+    startTime: c.start_time,
+    endTime: c.end_time,
+    paymentStatus: c.payment_status,
     notes: c.notes,
   }));
 
