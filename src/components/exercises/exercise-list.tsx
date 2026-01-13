@@ -22,7 +22,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AudioPlayer } from "./audio-player";
-import { Edit, Trash2, Users, Loader2 } from "lucide-react";
+import { AssignExerciseDialog } from "./assign-exercise-dialog";
+import { Edit, Trash2, Users, UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Exercise {
@@ -47,6 +48,17 @@ export function ExerciseList({ exercises: initialExercises }: ExerciseListProps)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [exerciseToAssign, setExerciseToAssign] = useState<Exercise | null>(null);
+
+  const handleAssignClick = (exercise: Exercise) => {
+    setExerciseToAssign(exercise);
+    setAssignDialogOpen(true);
+  };
+
+  const handleAssigned = () => {
+    router.refresh();
+  };
 
   const handleDeleteClick = (exercise: Exercise) => {
     setExerciseToDelete(exercise);
@@ -146,6 +158,14 @@ export function ExerciseList({ exercises: initialExercises }: ExerciseListProps)
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => handleAssignClick(exercise)}
+                      title="Assign to students"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       asChild
                       title="Edit exercise"
                     >
@@ -203,6 +223,16 @@ export function ExerciseList({ exercises: initialExercises }: ExerciseListProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {exerciseToAssign && (
+        <AssignExerciseDialog
+          exerciseId={exerciseToAssign.id}
+          exerciseTitle={exerciseToAssign.title}
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          onAssigned={handleAssigned}
+        />
+      )}
     </>
   );
 }
