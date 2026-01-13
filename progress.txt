@@ -212,3 +212,17 @@
 - Student information section with name, email, joined date, and ID
 - Mobile-responsive grid layout
 - Build and lint passing successfully
+
+### Task 4: Per-student exercise assignments - DONE
+- Created AssignStudentExercisesDialog component at src/components/students/assign-student-exercises-dialog.tsx
+- Dialog shows all available exercises with checkboxes for selection
+- Pre-checks currently assigned exercises when dialog opens
+- Uses existing POST /api/students/[id]/exercises endpoint for bulk assign/unassign
+- Created StudentDetailClient wrapper component for interactive features
+- Refactored student detail page to use client component for dialog state management
+- Added "Manage" button to Assigned Exercises card header
+- Toast notifications for success/error feedback
+- Page refreshes automatically after assignment changes
+- Build and lint passing successfully
+
+## Phase 5: Student Management - COMPLETED
