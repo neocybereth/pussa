@@ -264,3 +264,19 @@
 - Date selection navigates to schedule form with pre-filled dates
 - Payment status legend showing green (Paid) and amber (Unpaid) indicators
 - Build and lint passing successfully
+
+### Task 4: Schedule class form - DONE
+- Created ScheduleForm component at src/components/calendar/schedule-form.tsx
+- Added shadcn/ui Select component for student dropdown and payment status
+- Form fields: student (dropdown), title, start date/time, end date/time, payment status, notes
+- Pre-fills date/time from URL params when clicking calendar dates
+- Zod validation with custom refine to ensure end time is after start time
+- Uses react-hook-form with zodResolver for form management
+- Fetches students list from /api/students endpoint
+- Posts to /api/classes endpoint to create new scheduled class
+- Created schedule page at src/app/dashboard/teacher/calendar/schedule/page.tsx
+- Back navigation and cancel button to return to calendar
+- Loading state while fetching students, submit loading state
+- Toast notifications on success/error
+- Redirects to calendar after successful submission
+- Build and lint passing successfully
