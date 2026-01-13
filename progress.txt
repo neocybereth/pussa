@@ -127,3 +127,15 @@
 - Shows audio preview with playback controls after upload
 - Includes error handling and file removal functionality
 - Build and lint passing successfully
+
+### Task 3: Custom audio player component - DONE
+- Created AudioPlayer component at src/components/exercises/audio-player.tsx
+- Features: play/pause, seek via progress slider, volume control with mute toggle
+- Skip forward/back 10 seconds functionality
+- Time display in mm:ss format with current time and duration
+- Compact mode variant for inline audio playback (simpler UI)
+- Loading state with spinner while audio loads
+- Error handling for failed audio loads
+- Added slider UI component from shadcn/ui
+- Added HTMLAudioElement to ESLint browser globals
+- Build and lint passing successfully
