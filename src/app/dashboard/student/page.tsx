@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Calendar, Clock, DollarSign, ArrowRight } from "lucide-react";
 import { AudioPlayer } from "@/components/exercises/audio-player";
-import { TeacherProfileCard } from "@/components/profile/teacher-profile-card";
 
 export default async function StudentDashboardPage() {
   const session = await auth();
@@ -232,9 +231,6 @@ export default async function StudentDashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Teacher Profile Section */}
-      <TeacherProfileCard />
     </div>
   );
 }

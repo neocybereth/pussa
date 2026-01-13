@@ -16,6 +16,7 @@ export type Database = {
           password: string;
           name: string;
           bio: string | null;
+          video_url: string | null;
           role: "TEACHER" | "STUDENT";
           created_at: string;
           updated_at: string;
@@ -26,6 +27,7 @@ export type Database = {
           password: string;
           name: string;
           bio?: string | null;
+          video_url?: string | null;
           role?: "TEACHER" | "STUDENT";
           created_at?: string;
           updated_at?: string;
@@ -36,6 +38,7 @@ export type Database = {
           password?: string;
           name?: string;
           bio?: string | null;
+          video_url?: string | null;
           role?: "TEACHER" | "STUDENT";
           created_at?: string;
           updated_at?: string;

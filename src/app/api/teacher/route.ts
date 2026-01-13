@@ -11,28 +11,17 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Try to fetch with video_url first, fall back to without it if column doesn't exist
-    let teacher = null;
-    
-    const { data, error } = await supabase
+    // Fetch teacher user record with bio and video_url
+    const { data: teacher, error: teacherError } = await supabase
       .from("users")
       .select("id, name, bio, video_url")
       .eq("role", "TEACHER")
       .limit(1)
       .maybeSingle();
 
-    if (error && error.message?.includes("video_url")) {
-      // video_url column doesn't exist, fetch without it
-      const { data: fallbackData } = await supabase
-        .from("users")
-        .select("id, name, bio")
-        .eq("role", "TEACHER")
-        .limit(1)
-        .maybeSingle();
-      
-      teacher = fallbackData ? { ...fallbackData, video_url: null } : null;
-    } else {
-      teacher = data;
+    if (teacherError) {
+      console.error("Error fetching teacher:", teacherError);
+      return NextResponse.json({ error: "Failed to fetch teacher" }, { status: 500 });
     }
 
     if (!teacher) {
@@ -42,8 +31,8 @@ export async function GET() {
     return NextResponse.json({
       id: teacher.id,
       name: teacher.name,
-      bio: teacher.bio,
-      videoUrl: teacher.video_url,
+      bio: teacher.bio || null,
+      videoUrl: teacher.video_url || null,
     });
   } catch (error) {
     console.error("Error fetching teacher profile:", error);

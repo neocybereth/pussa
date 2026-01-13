@@ -14,6 +14,7 @@ import {
   X,
   UserCircle,
   LogOut,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const teacherNavItems: NavItem[] = [
 
 const studentNavItems: NavItem[] = [
   { href: "/dashboard/student", label: "Overview", icon: Home },
+  { href: "/dashboard/student/teacher", label: "My Teacher", icon: GraduationCap },
   { href: "/dashboard/student/exercises", label: "My Exercises", icon: BookOpen },
   { href: "/dashboard/student/calendar", label: "My Calendar", icon: Calendar },
 ];
