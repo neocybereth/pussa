@@ -116,3 +116,14 @@
 - Created DELETE /api/exercises/[id] - Delete exercise with cascade (teacher only)
 - All routes include proper auth checks and error handling
 - Build and lint passing successfully
+
+### Task 2: Audio uploader with Vercel Blob - DONE
+- Created POST /api/upload for uploading audio files to Vercel Blob
+- Created DELETE /api/upload for removing uploaded files from Vercel Blob
+- Added AudioUploader component at src/components/exercises/audio-uploader.tsx
+- Supports drag-and-drop file upload with visual feedback
+- Validates file types: MP3, WAV, M4A, OGG (max 50MB)
+- Displays upload progress indicator during upload
+- Shows audio preview with playback controls after upload
+- Includes error handling and file removal functionality
+- Build and lint passing successfully
