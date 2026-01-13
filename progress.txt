@@ -57,3 +57,62 @@
 - Seeds default site settings with bio, pricing, and contact info
 - Added npm scripts: db:generate, db:migrate, db:push, db:seed
 - Installed tsx and dotenv for running seed script
+
+## Phase 3: Layout & Navigation - IN PROGRESS
+
+### Task 1: Create root layout with providers - DONE
+- Created SessionProvider component wrapping NextAuth SessionProvider
+- Updated root layout to wrap children with SessionProvider
+- Added Toaster component from sonner for toast notifications
+- Build and lint passing successfully
+
+### Task 2: Header with navigation - DONE
+- Created Header component at src/components/layout/header.tsx
+- Added responsive navigation with mobile hamburger menu
+- Navigation links: Home, About, Dashboard (when logged in)
+- User menu dropdown with avatar, name, email, and sign out
+- Mobile menu with full navigation and auth actions
+- Uses shadcn/ui components: Button, DropdownMenu, Avatar
+- Lucide icons for visual elements (Music, Menu, X, LogOut, LayoutDashboard)
+- Active link highlighting based on current pathname
+- Loading state for auth status
+- Build and lint passing successfully
+
+### Task 3: Dashboard shell with sidebar - DONE
+- Created DashboardSidebar component with role-based navigation
+- Teacher navigation: Overview, Students, Exercises, Calendar, Settings
+- Student navigation: Overview, My Exercises, My Calendar
+- Mobile-responsive sidebar with overlay and close button
+- Created DashboardShell wrapper component with mobile header toggle
+- Created dashboard layout at src/app/dashboard/layout.tsx
+- Created teacher dashboard page with overview cards (students, exercises, classes)
+- Created student dashboard page with progress cards (exercises, classes, practice)
+- Uses shadcn/ui Card components with Lucide icons
+- Build and lint passing successfully
+
+### Task 4: Mobile-responsive nav - DONE
+- Mobile navigation already implemented in Header component (Task 2)
+- Mobile sidebar implemented in DashboardShell (Task 3)
+- Both include hamburger menu toggle and full navigation functionality
+
+### Task 5: Footer - DONE
+- Created Footer component at src/components/layout/footer.tsx
+- Includes logo, navigation links (Home, About, Sign in), and copyright
+- Mobile-responsive layout with flexbox
+- Created (public) route group with layout including Header and Footer
+- Moved home page to src/app/(public)/page.tsx
+- Created placeholder About page at src/app/(public)/about/page.tsx
+- Build and lint passing successfully
+
+## Phase 3: Layout & Navigation - COMPLETED
+
+## Phase 4: Exercise Management - IN PROGRESS
+
+### Task 1: Exercise CRUD API routes - DONE
+- Created GET /api/exercises - List all exercises with assignment counts (teacher only)
+- Created POST /api/exercises - Create new exercise with Zod validation (teacher only)
+- Created GET /api/exercises/[id] - Get single exercise (teachers see all details, students see assigned only)
+- Created PUT /api/exercises/[id] - Update exercise with partial validation (teacher only)
+- Created DELETE /api/exercises/[id] - Delete exercise with cascade (teacher only)
+- All routes include proper auth checks and error handling
+- Build and lint passing successfully
