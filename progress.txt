@@ -191,3 +191,14 @@
 - All routes include proper auth checks (teacher only for mutations)
 - Students can view their own exercises via GET /api/students/[id]/exercises
 - Build and lint passing successfully
+
+### Task 2: Student list view with search - DONE
+- Created StudentList component at src/components/students/student-list.tsx
+- Implemented search/filter functionality by student name or email
+- Table view with columns: name, email, exercise count, class count, joined date, actions
+- Delete confirmation dialog with loading state
+- Empty state with link to registration page
+- Mobile-responsive: shows badges inline on smaller screens
+- Created teacher students page at src/app/dashboard/teacher/students/page.tsx
+- Fixed Zod validation error property (errors -> issues) for Zod 4 compatibility
+- Build and lint passing successfully
