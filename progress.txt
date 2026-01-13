@@ -226,3 +226,17 @@
 - Build and lint passing successfully
 
 ## Phase 5: Student Management - COMPLETED
+
+## Phase 6: Calendar & Scheduling - IN PROGRESS
+
+### Task 1: Install FullCalendar or react-big-calendar - DONE
+- Installed @fullcalendar/react and plugins: core, daygrid, timegrid, interaction, list
+- Created CalendarView component at src/components/calendar/calendar-view.tsx
+- Supports multiple views: month (dayGridMonth), week (timeGridWeek), day (timeGridDay), list (listWeek)
+- Event click handling for viewing/editing scheduled classes
+- Date selection for creating new scheduled classes
+- Payment status color coding: green (#22c55e) for PAID, amber (#f59e0b) for UNPAID
+- CSS custom properties for theming integration with shadcn/ui design system
+- Mobile-responsive toolbar layout with stacked buttons on small screens
+- Uses useSyncExternalStore for proper SSR hydration handling
+- Build and lint passing successfully
