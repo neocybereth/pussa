@@ -165,3 +165,17 @@
 - Created new exercise page at src/app/dashboard/teacher/exercises/new/page.tsx
 - Created edit exercise page at src/app/dashboard/teacher/exercises/[id]/edit/page.tsx
 - Build and lint passing successfully
+
+### Task 6: Assign-to-students functionality - DONE
+- Created GET/POST/DELETE /api/exercises/[id]/assign API routes for managing student assignments
+- Created GET /api/students API route for listing all students (teacher only)
+- Added AssignExerciseDialog component at src/components/exercises/assign-exercise-dialog.tsx
+- Multi-select student list with checkboxes showing name and email
+- Pre-checks currently assigned students when dialog opens
+- Supports adding and removing multiple assignments in one save operation
+- Added "Assign to students" button (UserPlus icon) to exercise list actions
+- Added shadcn/ui checkbox component
+- Toast notifications for success/error feedback
+- Build and lint passing successfully
+
+## Phase 4: Exercise Management - COMPLETED
